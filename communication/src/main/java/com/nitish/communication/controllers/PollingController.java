@@ -21,33 +21,45 @@ public class PollingController {
         isDatabaseUp(jdbcUrl, username, password);
     }
 
-    public static void isDatabaseUp(String jdbcUrl, String username, String password) {
+    public static void isDatabaseUp(String jdbcUrl,
+                                    String username,
+                                    String password) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
         Runnable dbStatusTask = new Runnable() {
             @Override
             public void run() {
-                try(Connection conn = DriverManager.getConnection(jdbcUrl, username, password)) {
+                try(Connection conn = DriverManager.
+                        getConnection(jdbcUrl, username, password)) {
                     if(conn != null && !conn.isClosed()) {
-                        System.out.println(getTimeStamp() + " : DB is up. Closing the executor");
+                        System.out.println(
+                                getTimeStamp() + " : DB is up. " +
+                                        "Closing the executor");
                         scheduler.shutdown();
                     } else {
-                        System.out.println(getTimeStamp() + " : DB is down");
+                        System.out.println(
+                                getTimeStamp() + " : DB is down");
                     }
                 } catch (SQLException e) {
-                    System.out.println(getTimeStamp() + " : DB connection failed. Status will be re-checked in 2 seconds.");
+                    System.out.println(
+                            getTimeStamp() + " : DB connection failed. " +
+                            "Status will be re-checked in 2 seconds.");
                 }
             }
         };
 
-        scheduler.scheduleAtFixedRate(dbStatusTask, 0, 2, TimeUnit.SECONDS);
+        scheduler
+                .scheduleAtFixedRate(dbStatusTask,
+                        0,
+                        2,
+                        TimeUnit.SECONDS);
+        scheduler.
     }
 
     public static String getTimeStamp() {
         long millis = System.currentTimeMillis();
         Date resultDate = new Date(millis);
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-
         return sdf.format(resultDate);
     }
 }
