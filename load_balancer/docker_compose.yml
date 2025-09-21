@@ -1,0 +1,87 @@
+version: '3.8'
+services:
+
+  # Nginx load balancer (TCP proxy for MySQL & HTTP REST API proxy)
+  load-balancer:
+    image: nginx:stable-alpine
+    ports:
+      - "3306:3306"       # expose MySQL proxy on host port 3306
+      - "8080:80"         # expose REST API on host port 8080
+    depends_on:
+      - mysql-primary
+      - mysql-secondary
+      - api-service-1
+      - api-service-2
+
+  # MySQL backend servers
+  mysql-primary:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=mysql-primary-db
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppass
+    command: >
+             bash -c "
+               docker-entrypoint.sh mysqld --bind-address=0.0.0.0 &
+               pid=$!;
+               sleep 10;
+               echo 'Waiting for MySQL to be ready...';
+               until mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent; do
+                 sleep 2;
+               done;
+               echo 'MySQL is ready, running GRANT...';
+               mysql -uroot -p$$MYSQL_ROOT_PASSWORD -e \"
+                 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+                 FLUSH PRIVILEGES;\";
+               wait $$pid
+             "
+
+  mysql-secondary:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=mysql-secondary-db
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppass
+    command: >
+             bash -c "
+               docker-entrypoint.sh mysqld --bind-address=0.0.0.0 &
+               pid=$!;
+               sleep 10;
+               echo 'Waiting for MySQL to be ready...';
+               until mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent; do
+                 sleep 2;
+               done;
+               echo 'MySQL is ready, running GRANT...';
+               mysql -uroot -p$$MYSQL_ROOT_PASSWORD -e \"
+                 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+                 FLUSH PRIVILEGES;\";
+               wait $$pid
+             "
+
+  # Example REST API backend services
+  api-service-1:
+    image: app1
+  api-service-2:
+    image: app2
+
+#-------------------------
+#docker run -d --name mysql-1 --env MYSQL_ROOT_PASSWORD=rootpass --env MYSQL_DATABASE=exampledb --env MYSQL_USER=appuser --env MYSQL_PASSWORD=apppass mysql:8.0
+#docker run -d --name mysql-2 --env MYSQL_ROOT_PASSWORD=rootpass --env MYSQL_DATABASE=exampledb --env MYSQL_USER=appuser --env MYSQL_PASSWORD=apppass mysql:8.0
+#docker run -d --name load-balancer -p 3306:3306 -p 8080:80 nginx:stable-alpine
+
+# L7 Nginx load balancer (HTTP REST API proxy)
+# l7-balancer:
+#   image: nginx:stable-alpine
+#   volumes:
+#     - ./l7-nginx.conf:/etc/nginx/nginx.conf:ro
+#   ports:
+#     - "8080:80"         # expose REST API on host port 8080
+#   depends_on:
+#     - api-service-1
+#     - api-service-2
+
+#MySQL settings:
+#GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+#FLUSH PRIVILEGES;

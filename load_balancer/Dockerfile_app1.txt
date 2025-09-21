@@ -1,0 +1,9 @@
+FROM openjdk:17-jdk-slim
+
+WORKDIR /app
+
+COPY lb_app1.jar lb_app1.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "lb_app1.jar"]
